@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music RPG Attack Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            border: 2px solid #ffd700;
+            background: #000;
+            display: block;
+        }
+
+        .screen {
+            position: absolute;
+            width: 800px;
+            height: 600px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 36px;
+            color: #ffd700;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background: #333;
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #ffd700;
+            color: #000;
+        }
+
+        button.selected {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+            max-width: 700px;
+        }
+
+        .character-card {
+            background: #222;
+            border: 2px solid #666;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .character-card:hover {
+            border-color: #ffd700;
+        }
+
+        .character-card.selected {
+            border-color: #ffd700;
+            background: #333;
+        }
+
+        .character-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .difficulty-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .difficulty-item {
+            background: #222;
+            border: 2px solid #666;
+            padding: 15px 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .difficulty-item:hover {
+            border-color: #ffd700;
+        }
+
+        .difficulty-item.selected {
+            border-color: #ffd700;
+            background: #333;
+        }
+
+        .battle-screen {
+            background: #228b22;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .battle-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .character-battle {
+            text-align: center;
+            width: 45%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .character-sprite {
+            width: 150px;
+            height: 200px;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .health-bar-container {
+            width: 200px;
+            height: 25px;
+            background: #000;
+            border: 2px solid #fff;
+            margin: 10px auto;
+            position: relative;
+        }
+
+        .health-bar {
+            height: 100%;
+            background: #ff0000;
+            transition: width 0.3s;
+            min-width: 0;
+        }
+        
+        .health-bar-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .move-menu {
+            position: absolute;
+            top: 200px;
+            right: 50px;
+            background: #222;
+            border: 3px solid #ffd700;
+            padding: 20px;
+            min-width: 300px;
+            max-width: 350px;
+            z-index: 10;
+        }
+
+        .move-item {
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            background: #333;
+            border: 2px solid #666;
+        }
+
+        .move-item:hover, .move-item.selected {
+            border-color: #ffd700;
+            background: #444;
+        }
+
+        .question-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .question-box {
+            background: #222;
+            border: 4px solid #ffd700;
+            padding: 30px;
+            max-width: 700px;
+            text-align: center;
+        }
+
+        .staff {
+            margin: 20px 0;
+            position: relative;
+            height: 60px;
+        }
+
+        .staff-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #fff;
+        }
+
+        .note {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #000;
+        }
+
+        .note.circled {
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        input[type="text"] {
+            background: #000;
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            padding: 10px;
+            font-size: 18px;
+            margin: 10px;
+            text-align: center;
+        }
+
+        .battle-message {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border: 2px solid #ffd700;
+            font-size: 18px;
+            color: #fff;
+            z-index: 10;
+            border-radius: 5px;
+        }
+
+        .win-lose-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .win-lose-text {
+            font-size: 72px;
+            margin-bottom: 30px;
+        }
+
+        .win {
+            color: #ffd700;
+        }
+
+        .lose {
+            color: #ff0000;
+        }
+
+        .instructions {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .achievement-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .achievement-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #222;
+            border-left: 4px solid #666;
+        }
+
+        .achievement-item.unlocked {
+            border-left-color: #ffd700;
+        }
+
+        .countdown {
+            font-size: 36px;
+            color: #fff;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Title Screen -->
+    <div id="titleScreen" class="screen active">
+        <h1>Music RPG Attack Game</h1>
+        <div class="countdown" id="countdown"></div>
+        <div id="timeUpMessage" style="display: none;">
+            <h2>holy fuck it the end of the 1st</h2>
+            <h2>half of school</h2>
+        </div>
+        <div id="titleButtons" style="display: none;">
+            <button onclick="game.showCharacterSelect()">Start</button>
+            <button onclick="game.showAchievements()">Achievements</button>
+        </div>
+    </div>
+
+    <!-- Character Select Screen -->
+    <div id="characterSelectScreen" class="screen">
+        <h2>Select Character</h2>
+        <div class="character-grid" id="characterGrid"></div>
+        <div class="instructions">Arrow Keys: Navigate | Enter: Select | ESC: Back to Title</div>
+    </div>
+
+    <!-- NPC Select Screen -->
+    <div id="npcSelectScreen" class="screen">
+        <h2>Select NPC Character</h2>
+        <div class="character-grid" id="npcGrid"></div>
+        <div class="instructions">Arrow Keys: Navigate | Enter: Select | ESC: Back</div>
+    </div>
+
+    <!-- Difficulty Select Screen -->
+    <div id="difficultySelectScreen" class="screen">
+        <h2>Select Difficulty</h2>
+        <div class="difficulty-list" id="difficultyList"></div>
+        <div class="instructions">Arrow Keys: Navigate | Enter: Select | ESC: Back</div>
+    </div>
+
+    <!-- Battle Screen -->
+    <div id="battleScreen" class="screen battle-screen" tabindex="0">
+        <div class="battle-area">
+            <div class="character-battle" style="align-items: flex-start; padding-top: 50px;">
+                <div style="font-size: 20px; color: #fff; margin-bottom: 10px;">Player</div>
+                <div id="playerCharacter"></div>
+                <div style="font-size: 14px; color: #fff; margin-top: 10px;">HP</div>
+                <div id="playerHealthBar" class="health-bar-container">
+                    <div id="playerHealth" class="health-bar"></div>
+                </div>
+                <div id="playerStats"></div>
+            </div>
+            <div class="character-battle" style="align-items: flex-start; padding-top: 50px;">
+                <div style="font-size: 20px; color: #fff; margin-bottom: 10px;">Enemy</div>
+                <div id="npcCharacter"></div>
+                <div style="font-size: 14px; color: #fff; margin-top: 10px;">HP</div>
+                <div id="npcHealthBar" class="health-bar-container">
+                    <div id="npcHealth" class="health-bar"></div>
+                </div>
+                <div id="npcStats"></div>
+            </div>
+        </div>
+        <div id="battleMessage" class="battle-message"></div>
+        <button id="showMoveButton" onclick="game.showMoveMenu()" style="position: absolute; top: 150px; right: 50px; background: #ffd700; color: #000; border: 2px solid #fff; padding: 15px 30px; font-size: 18px; cursor: pointer; display: none; z-index: 10;">Select Move</button>
+        <div id="moveMenu" class="move-menu" style="display: none;">
+            <h3 style="color: #ffd700; margin-bottom: 10px;">Select Move:</h3>
+            <div id="moveList"></div>
+            <div class="instructions">1/2/3 or Arrow Keys + Enter | ESC to cancel</div>
+        </div>
+        <div id="questionOverlay" class="question-overlay" style="display: none;">
+            <div class="question-box">
+                <h3 style="color: #ffd700;">SUPER MOVE - Music Question</h3>
+                <div id="questionText"></div>
+                <div id="staffContainer" class="staff"></div>
+                <div>
+                    <label>Your answer:</label>
+                    <input type="text" id="answerInput" maxlength="2" />
+                    <button onclick="game.submitAnswer()">Submit</button>
+                </div>
+            </div>
+        </div>
+        <div id="winLoseOverlay" class="win-lose-overlay" style="display: none;">
+            <div id="winLoseText" class="win-lose-text"></div>
+            <div id="winLoseMessage"></div>
+            <button onclick="game.handleBattleEnd()">Continue</button>
+        </div>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div id="achievementsScreen" class="screen">
+        <h2>Achievements</h2>
+        <ul class="achievement-list" id="achievementList"></ul>
+        <div class="instructions">Press ESC to return</div>
+    </div>
+
+    <script>
+        // Game state
+        const game = {
+            // Constants
+            SCREEN_WIDTH: 800,
+            SCREEN_HEIGHT: 600,
+            targetDate: new Date('2026-01-16T03:50:00'),
+            
+            // State
+            currentScreen: 'title',
+            showTimeUpMessage: false,
+            timeUpMessageStart: null,
+            
+            // Achievements
+            achievements: {
+                win: {name: "Win", description: "Win a game", unlocked: false},
+                pay_taxes: {name: "Now you have to pay your taxes", description: "Lose a game", unlocked: false},
+                why: {name: "Why", description: "Win as the character", unlocked: false},
+                tune_i_love: {name: "That the tune i love", description: "Win as Saxophone with under 50% health", unlocked: false},
+                bird_plane: {name: "It bird it a plane what nooooooo", description: "Win without using super moves", unlocked: false},
+            },
+            
+            // Characters
+            characters: [
+                {name: "Flute", color: "#ffffff", speed: 10, weight: 1, base_hp: 70, base_damage: 6},
+                {name: "Clarinet", color: "#ffd700", speed: 8, weight: 2, base_hp: 80, base_damage: 7},
+                {name: "Saxophone", color: "#6496ff", speed: 6, weight: 4, base_hp: 90, base_damage: 8},
+                {name: "Trombone", color: "#ffd700", speed: 4, weight: 6, base_hp: 110, base_damage: 10},
+                {name: "Baritone", color: "#ffffff", speed: 3, weight: 8, base_hp: 120, base_damage: 11},
+                {name: "Tuba", color: "#6496ff", speed: 2, weight: 10, base_hp: 130, base_damage: 12},
+                {name: "Mafeoso", color: "#ffd700", speed: 7, weight: 5, base_hp: 200, base_damage: 14, unlocked: false},
+            ],
+            
+            selectedCharacterIndex: 0,
+            selectedCharacter: null,
+            selectedNpcIndex: 0,
+            selectedNpc: null,
+            selectedDifficultyIndex: 0,
+            selectedDifficulty: null,
+            
+            difficulties: ["Easy", "Medium", "Hard", "Expert", "Teacher Mode"],
+            teacherMode: false,
+            teacherBattleCount: 0,
+            teacherMaxBattles: 3,
+            
+            // Battle state
+            inBattle: false,
+            playerHealth: 100,
+            playerMaxHealth: 100,
+            npcHealth: 100,
+            npcMaxHealth: 100,
+            playerTurn: true,
+            battleMessage: "",
+            battleMessageTimer: 0,
+            showMoveSelection: false,
+            selectedMoveIndex: 0,
+            battleOver: false,
+            battleResult: null,
+            
+            // Moves
+            moves: [
+                {name: "Normal Attack", type: "attack", damage_multiplier: 1.0, description: "Standard attack"},
+                {name: "Block", type: "block", damage_multiplier: 0.0, description: "Defend against next attack"},
+                {name: "Super", type: "super", damage_multiplier: 2.0, description: "Answer music question for big damage"},
+            ],
+            
+            // Music questions
+            musicNotes: ["C", "D", "E", "F", "G", "A", "B"],
+            currentQuestion: null,
+            questionAnswer: "",
+            showQuestion: false,
+            
+            // Multi-hit system
+            attackHits: [],
+            currentHitIndex: 0,
+            
+            // Blocking
+            playerBlocking: false,
+            npcBlocking: false,
+            
+            // NPC AI
+            npcMoveSelection: null,
+            npcLastActionTime: 0,
+            npcNextReactionTime: 0,
+            
+            // Tracking
+            superMovesUsedThisBattle: 0,
+            blocksUsed: 0,
+            
+            // Teacher mode learning
+            learnedPlayerPatterns: {
+                preferred_moves: {attack: 0, block: 0, super: 0},
+                move_sequences: [],
+                health_thresholds: {low: [], medium: [], high: []},
+                block_usage: 0,
+                super_usage: 0,
+            },
+            currentBattleMoves: [],
+            
+            // Initialize
+            init() {
+                this.updateCountdown();
+                setInterval(() => this.updateCountdown(), 1000);
+                setTimeout(() => {
+                    document.getElementById('titleButtons').style.display = 'block';
+                }, 1000);
+                this.setupKeyboard();
+                this.renderCharacterSelect();
+                this.renderNpcSelect();
+                this.renderDifficultySelect();
+                this.renderAchievements();
+            },
+            
+            // Countdown timer
+            updateCountdown() {
+                const now = new Date();
+                const diff = this.targetDate - now;
+                
+                if (diff <= 0) {
+                    if (!this.showTimeUpMessage) {
+                        this.showTimeUpMessage = true;
+                        this.timeUpMessageStart = Date.now();
+                        document.getElementById('timeUpMessage').style.display = 'block';
+                        document.getElementById('countdown').style.display = 'none';
+                    }
+                    
+                    const elapsed = Date.now() - this.timeUpMessageStart;
+                    if (elapsed < 300000) { // 5 minutes
+                        return;
+                    } else {
+                        this.showTimeUpMessage = false;
+                        document.getElementById('timeUpMessage').style.display = 'none';
+                        document.getElementById('countdown').style.display = 'block';
+                    }
+                    return;
+                }
+                
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('countdown').textContent = 
+                    `${days}d ${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`;
+            },
+            
+            // Screen management
+            showScreen(screenName) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(screenName + 'Screen').classList.add('active');
+                this.currentScreen = screenName;
+            },
+            
+            showCharacterSelect() {
+                this.showScreen('characterSelect');
+            },
+            
+            showNpcSelect() {
+                this.showScreen('npcSelect');
+            },
+            
+            showDifficultySelect() {
+                this.showScreen('difficultySelect');
+            },
+            
+            showBattle() {
+                this.showScreen('battle');
+                // Focus the battle screen for keyboard input
+                setTimeout(() => {
+                    const battleScreen = document.getElementById('battleScreen');
+                    if (battleScreen) {
+                        battleScreen.focus();
+                    }
+                }, 100);
+                this.startBattle();
+            },
+            
+            showMoveMenu() {
+                if (this.playerTurn && !this.battleOver && !this.showQuestion) {
+                    this.showMoveSelection = true;
+                    this.selectedMoveIndex = 0;
+                    this.updateBattleDisplay();
+                }
+            },
+            
+            showAchievements() {
+                this.showScreen('achievements');
+            },
+            
+            // Rendering
+            renderCharacterSelect() {
+                const grid = document.getElementById('characterGrid');
+                grid.innerHTML = '';
+                this.characters.forEach((char, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+                    if (i === this.selectedCharacterIndex) card.classList.add('selected');
+                    if (char.unlocked === false) card.classList.add('locked');
+                    
+                    card.innerHTML = `
+                        <div style="font-size: 24px; color: ${char.color}; margin: 10px 0;">${char.name}</div>
+                        <div style="font-size: 14px; color: #aaa;">
+                            Spd:${char.speed} Wgt:${char.weight}<br>
+                            HP:${char.base_hp} DMG:${char.base_damage}
+                        </div>
+                        ${char.unlocked === false ? '<div style="color: #666; margin-top: 10px;">LOCKED</div>' : ''}
+                    `;
+                    
+                    if (char.unlocked !== false) {
+                        card.onclick = () => {
+                            this.selectedCharacterIndex = i;
+                            this.renderCharacterSelect();
+                        };
+                    }
+                    
+                    grid.appendChild(card);
+                });
+            },
+            
+            renderNpcSelect() {
+                const grid = document.getElementById('npcGrid');
+                grid.innerHTML = '';
+                this.characters.forEach((char, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+                    if (i === this.selectedNpcIndex) card.classList.add('selected');
+                    
+                    card.innerHTML = `
+                        <div style="font-size: 24px; color: ${char.color}; margin: 10px 0;">${char.name}</div>
+                        <div style="font-size: 14px; color: #aaa;">
+                            Spd:${char.speed} Wgt:${char.weight}<br>
+                            HP:${char.base_hp} DMG:${char.base_damage}
+                        </div>
+                    `;
+                    
+                    card.onclick = () => {
+                        this.selectedNpcIndex = i;
+                        this.renderNpcSelect();
+                    };
+                    
+                    grid.appendChild(card);
+                });
+            },
+            
+            renderDifficultySelect() {
+                const list = document.getElementById('difficultyList');
+                list.innerHTML = '';
+                this.difficulties.forEach((diff, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'difficulty-item';
+                    if (i === this.selectedDifficultyIndex) item.classList.add('selected');
+                    item.textContent = diff;
+                    item.onclick = () => {
+                        this.selectedDifficultyIndex = i;
+                        this.renderDifficultySelect();
+                    };
+                    list.appendChild(item);
+                });
+            },
+            
+            renderAchievements() {
+                const list = document.getElementById('achievementList');
+                list.innerHTML = '';
+                Object.values(this.achievements).forEach(ach => {
+                    const item = document.createElement('li');
+                    item.className = 'achievement-item';
+                    if (ach.unlocked) item.classList.add('unlocked');
+                    item.innerHTML = `
+                        <strong>${ach.name}</strong> - ${ach.description}
+                        <span style="float: right; color: ${ach.unlocked ? '#ffd700' : '#666'};">
+                            ${ach.unlocked ? '✓ UNLOCKED' : 'LOCKED'}
+                        </span>
+                    `;
+                    list.appendChild(item);
+                });
+            },
+            
+            // Battle system
+            startBattle() {
+                this.selectedCharacter = this.characters[this.selectedCharacterIndex];
+                this.selectedNpc = this.characters[this.selectedNpcIndex];
+                this.selectedDifficulty = this.difficulties[this.selectedDifficultyIndex];
+                this.teacherMode = this.selectedDifficultyIndex === 4;
+                
+                if (this.teacherMode) {
+                    this.teacherBattleCount = 0;
+                    this.learnedPlayerPatterns = {
+                        preferred_moves: {attack: 0, block: 0, super: 0},
+                        move_sequences: [],
+                        health_thresholds: {low: [], medium: [], high: []},
+                        block_usage: 0,
+                        super_usage: 0,
+                    };
+                }
+                
+                this.playerHealth = this.selectedCharacter.base_hp;
+                this.playerMaxHealth = this.selectedCharacter.base_hp;
+                this.npcHealth = this.selectedNpc.base_hp;
+                this.npcMaxHealth = this.selectedNpc.base_hp;
+                
+                // In Teacher Mode, player always goes first (NPC never takes a turn)
+                this.playerTurn = this.teacherMode ? true : (this.selectedCharacter.speed >= this.selectedNpc.speed);
+                this.battleOver = false;
+                this.battleResult = null;
+                this.battleMessage = this.teacherMode ? "Teacher Mode: Battle Start! NPC is learning and won't attack." : "Battle Start!";
+                this.battleMessageTimer = Date.now();
+                this.superMovesUsedThisBattle = 0;
+                this.blocksUsed = 0;
+                this.currentBattleMoves = [];
+                this.playerBlocking = false;
+                this.npcBlocking = false;
+                this.npcMoveSelection = null;
+                this.npcLastActionTime = Date.now();
+                this.npcNextReactionTime = 0;
+                
+                this.updateBattleDisplay();
+                this.updateBattleLoop();
+            },
+            
+            updateBattleDisplay() {
+                // Update health bars
+                const playerHealthPercent = (this.playerHealth / this.playerMaxHealth) * 100;
+                const npcHealthPercent = (this.npcHealth / this.npcMaxHealth) * 100;
+                
+                document.getElementById('playerHealth').style.width = playerHealthPercent + '%';
+                document.getElementById('npcHealth').style.width = npcHealthPercent + '%';
+                
+                // Draw character sprites
+                this.drawCharacterSprite('playerCharacter', this.selectedCharacter);
+                this.drawCharacterSprite('npcCharacter', this.selectedNpc);
+                
+                // Update stats
+                document.getElementById('playerStats').innerHTML = 
+                    `<div style="font-size: 14px; margin-top: 10px;">HP: ${this.playerHealth}/${this.playerMaxHealth}</div>
+                     <div style="font-size: 12px; color: #aaa;">Spd: ${this.selectedCharacter.speed} | Wgt: ${this.selectedCharacter.weight}</div>`;
+                document.getElementById('npcStats').innerHTML = 
+                    `<div style="font-size: 14px; margin-top: 10px;">HP: ${this.npcHealth}/${this.npcMaxHealth}</div>
+                     <div style="font-size: 12px; color: #aaa;">Spd: ${this.selectedNpc.speed} | Wgt: ${this.selectedNpc.weight}</div>`;
+                
+                // Update battle message (hide if empty)
+                const battleMessageEl = document.getElementById('battleMessage');
+                battleMessageEl.textContent = this.battleMessage;
+                if (this.battleMessage === "" || !this.battleMessage) {
+                    battleMessageEl.style.display = 'none';
+                } else {
+                    battleMessageEl.style.display = 'block';
+                }
+                
+                // Show turn indicator
+                let turnIndicator = document.getElementById('turnIndicator');
+                if (!turnIndicator) {
+                    turnIndicator = document.createElement('div');
+                    turnIndicator.id = 'turnIndicator';
+                    turnIndicator.style.cssText = 'position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); padding: 15px 30px; border: 2px solid #ffd700; font-size: 18px; color: #ffd700; z-index: 10; border-radius: 5px;';
+                    document.getElementById('battleScreen').appendChild(turnIndicator);
+                }
+                
+                // Show turn indicator based on current state
+                if (this.battleOver) {
+                    // Hide when battle is over
+                    turnIndicator.style.display = 'none';
+                } else if (this.showQuestion) {
+                    // Hide during question
+                    turnIndicator.style.display = 'none';
+                } else if (this.teacherMode) {
+                    // In Teacher Mode, always show player turn indicator (NPC never takes a turn)
+                    if (!this.showMoveSelection) {
+                        turnIndicator.textContent = 'YOUR TURN - Press SPACE or ENTER to select a move!';
+                    } else {
+                        turnIndicator.textContent = 'Select your move (Arrow Keys + Enter, or press 1/2/3)';
+                    }
+                    turnIndicator.style.display = 'block';
+                } else if (this.playerTurn) {
+                    // Show during player's turn
+                    if (!this.showMoveSelection) {
+                        turnIndicator.textContent = 'YOUR TURN - Press SPACE or ENTER to select a move!';
+                    } else {
+                        turnIndicator.textContent = 'Select your move (Arrow Keys + Enter, or press 1/2/3)';
+                    }
+                    turnIndicator.style.display = 'block';
+                } else if (!this.playerTurn) {
+                    // Show NPC turn
+                    turnIndicator.textContent = 'NPC Turn...';
+                    turnIndicator.style.display = 'block';
+                } else {
+                    turnIndicator.style.display = 'block'; // Default to showing
+                }
+                
+                // Show/hide move button and menu
+                const showMoveButton = document.getElementById('showMoveButton');
+                if (showMoveButton) {
+                    if (this.playerTurn && !this.battleOver && !this.showQuestion && !this.showMoveSelection) {
+                        showMoveButton.style.display = 'block';
+                    } else {
+                        showMoveButton.style.display = 'none';
+                    }
+                }
+                
+                if (this.showMoveSelection && this.playerTurn && !this.battleOver && !this.showQuestion) {
+                    document.getElementById('moveMenu').style.display = 'block';
+                    this.renderMoveMenu();
+                } else {
+                    document.getElementById('moveMenu').style.display = 'none';
+                }
+                
+                // Show/hide question overlay
+                document.getElementById('questionOverlay').style.display = this.showQuestion ? 'flex' : 'none';
+                
+                // Show/hide win/lose overlay
+                document.getElementById('winLoseOverlay').style.display = this.battleOver ? 'flex' : 'none';
+                if (this.battleOver) {
+                    const text = document.getElementById('winLoseText');
+                    text.textContent = this.battleResult === 'win' ? 'YOU WIN!' : 'YOU LOSE!';
+                    text.className = 'win-lose-text ' + (this.battleResult === 'win' ? 'win' : 'lose');
+                    
+                    let message = '';
+                    if (this.teacherMode) {
+                        message = `Teacher Mode: Battle ${this.teacherBattleCount + 1}/${this.teacherMaxBattles}`;
+                    } else {
+                        message = 'Press Continue to return to character select';
+                    }
+                    document.getElementById('winLoseMessage').textContent = message;
+                }
+            },
+            
+            drawCharacterSprite(containerId, character) {
+                const container = document.getElementById(containerId);
+                const canvas = document.createElement('canvas');
+                canvas.width = 150;
+                canvas.height = 200;
+                canvas.style.border = '2px solid ' + character.color;
+                canvas.style.background = 'rgba(0, 0, 0, 0.3)';
+                canvas.style.borderRadius = '10px';
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const centerX = canvas.width / 2;
+                const headY = 20;
+                const headRadius = 12;
+                
+                // Draw person (white figure)
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(centerX, headY, headRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Body (trapezoid)
+                const bodyTopWidth = 25;
+                const bodyBottomWidth = 30;
+                const bodyHeight = 35;
+                const bodyY = headY + headRadius + 3;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX - bodyTopWidth/2, bodyY);
+                ctx.lineTo(centerX + bodyTopWidth/2, bodyY);
+                ctx.lineTo(centerX + bodyBottomWidth/2, bodyY + bodyHeight);
+                ctx.lineTo(centerX - bodyBottomWidth/2, bodyY + bodyHeight);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Arms
+                const armWidth = 6;
+                const armLength = 22;
+                const armY = bodyY + 8;
+                
+                // Left arm
+                ctx.fillRect(centerX - bodyTopWidth/2 - armLength + 5, armY, armLength, armWidth);
+                ctx.strokeRect(centerX - bodyTopWidth/2 - armLength + 5, armY, armLength, armWidth);
+                
+                // Right arm
+                ctx.fillRect(centerX + bodyTopWidth/2 - 5, armY, armLength, armWidth);
+                ctx.strokeRect(centerX + bodyTopWidth/2 - 5, armY, armLength, armWidth);
+                
+                // Legs
+                const legWidth = 8;
+                const legHeight = 25;
+                const legY = bodyY + bodyHeight;
+                
+                // Left leg
+                ctx.fillRect(centerX - bodyBottomWidth/2 + 6, legY, legWidth, legHeight);
+                ctx.strokeRect(centerX - bodyBottomWidth/2 + 6, legY, legWidth, legHeight);
+                
+                // Right leg
+                ctx.fillRect(centerX + bodyBottomWidth/2 - legWidth - 6, legY, legWidth, legHeight);
+                ctx.strokeRect(centerX + bodyBottomWidth/2 - legWidth - 6, legY, legWidth, legHeight);
+                
+                // Draw instrument
+                ctx.fillStyle = character.color;
+                ctx.strokeStyle = '#000000';
+                
+                const instrumentY = armY + 3;
+                const instrumentColor = character.color;
+                const instrumentDark = this.darkenColor(character.color);
+                
+                if (character.name === 'Flute') {
+                    // Flute - horizontal
+                    const fluteY = instrumentY;
+                    const fluteXStart = centerX - 40;
+                    const fluteXEnd = centerX + 40;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(fluteXStart, fluteY);
+                    ctx.lineTo(fluteXEnd, fluteY);
+                    ctx.stroke();
+                    // Keys
+                    for (let i = 0; i < 6; i++) {
+                        const keyX = fluteXStart + (i * (fluteXEnd - fluteXStart) / 6);
+                        ctx.fillStyle = instrumentDark;
+                        ctx.beginPath();
+                        ctx.arc(keyX, fluteY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else if (character.name === 'Clarinet') {
+                    // Clarinet - vertical
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, instrumentY);
+                    ctx.lineTo(centerX, canvas.height - 5);
+                    ctx.stroke();
+                    // Bell
+                    ctx.fillStyle = instrumentColor;
+                    ctx.beginPath();
+                    ctx.arc(centerX, canvas.height - 5, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (character.name === 'Saxophone') {
+                    // Saxophone - curved
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 15, instrumentY + 5);
+                    ctx.quadraticCurveTo(centerX, instrumentY + 20, centerX + 10, instrumentY + 35);
+                    ctx.stroke();
+                    // Bell
+                    ctx.beginPath();
+                    ctx.ellipse(centerX + 10, instrumentY + 35, 8, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (character.name === 'Trombone') {
+                    // Trombone - slide
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 4, instrumentY + 5);
+                    ctx.lineTo(centerX - 4, canvas.height - 23);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 4, instrumentY + 5);
+                    ctx.lineTo(centerX + 4, canvas.height - 23);
+                    ctx.stroke();
+                    // Bell
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, canvas.height - 23, 12, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (character.name === 'Baritone') {
+                    // Baritone - large brass
+                    ctx.lineWidth = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, instrumentY + 8);
+                    ctx.lineTo(centerX, canvas.height - 30);
+                    ctx.stroke();
+                    // Bell
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, canvas.height - 30, 18, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Valves
+                    ctx.fillStyle = instrumentDark;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(centerX - 8 + (i * 8), instrumentY + 23, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else if (character.name === 'Tuba') {
+                    // Tuba - largest
+                    ctx.lineWidth = 10;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, instrumentY - 5);
+                    ctx.lineTo(centerX, canvas.height - 33);
+                    ctx.stroke();
+                    // Top bell
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, instrumentY - 5, 22, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Bottom bell
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, canvas.height - 33, 20, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (character.name === 'Mafeoso') {
+                    // Mafeoso - fedora and golden saxophone
+                    // Fedora
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, headY - 5, 18, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, headY - 8, 12, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Suit
+                    ctx.fillRect(centerX - 25, headY + 15, 20, 30);
+                    ctx.fillRect(centerX + 5, headY + 15, 20, 30);
+                    ctx.fillRect(centerX - 1, headY + 20, 2, 15);
+                    
+                    // Golden saxophone
+                    ctx.fillStyle = '#ffd700';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 7;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 20, instrumentY + 5);
+                    ctx.quadraticCurveTo(centerX + 30, instrumentY + 20, centerX + 40, instrumentY + 35);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(centerX + 40, instrumentY + 35, 10, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // Character name
+                ctx.fillStyle = character.color;
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(character.name, centerX, canvas.height - 5);
+                
+                // Clear container and add canvas
+                container.innerHTML = '';
+                container.appendChild(canvas);
+            },
+            
+            darkenColor(color) {
+                // Convert hex to RGB and darken
+                const hex = color.replace('#', '');
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                return `rgb(${Math.floor(r * 0.7)}, ${Math.floor(g * 0.7)}, ${Math.floor(b * 0.7)})`;
+            },
+            
+            renderMoveMenu() {
+                const list = document.getElementById('moveList');
+                list.innerHTML = '';
+                this.moves.forEach((move, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'move-item';
+                    if (i === this.selectedMoveIndex) item.classList.add('selected');
+                    item.textContent = `${i + 1}. ${move.name} - ${move.description}`;
+                    item.onclick = () => {
+                        this.selectedMoveIndex = i;
+                        this.executePlayerMove();
+                    };
+                    item.onmouseenter = () => {
+                        this.selectedMoveIndex = i;
+                        this.renderMoveMenu();
+                    };
+                    list.appendChild(item);
+                });
+            },
+            
+            executePlayerMove() {
+                const move = this.moves[this.selectedMoveIndex];
+                this.recordPlayerMove(move.type);
+                
+                if (move.type === 'block') {
+                    this.playerBlocking = true;
+                    this.battleMessage = "";
+                    this.battleMessageTimer = Date.now();
+                    this.showMoveSelection = false;
+                    // In Teacher Mode, NPC never takes a turn
+                    if (!this.teacherMode) {
+                        this.playerTurn = false;
+                        this.npcLastActionTime = Date.now();
+                        this.npcNextReactionTime = 0;
+                    }
+                    // Immediately update display to keep turn indicator visible
+                    this.updateBattleDisplay();
+                } else if (move.type === 'super') {
+                    this.showMoveSelection = false;
+                    this.showQuestion = true;
+                    this.generateMusicQuestion();
+                    this.questionAnswer = '';
+                    document.getElementById('answerInput').value = '';
+                    document.getElementById('answerInput').focus();
+                    // Update display (turn indicator will be hidden during question)
+                    this.updateBattleDisplay();
+                } else {
+                    // Normal attack
+                    this.executePlayerAttack();
+                    // Display will be updated in processNextHit
+                }
+            },
+            
+            executePlayerAttack() {
+                const baseDamage = this.selectedCharacter.base_damage;
+                const weight = this.selectedCharacter.weight;
+                
+                let numHits = 1;
+                if (weight <= 2) {
+                    numHits = Math.floor(Math.random() * 2) + 2; // 2-3 hits
+                } else if (weight <= 4) {
+                    numHits = Math.floor(Math.random() * 2) + 1; // 1-2 hits
+                }
+                
+                let damagePerHit = baseDamage;
+                if (numHits > 1) {
+                    damagePerHit = Math.floor(damagePerHit * 0.9);
+                }
+                
+                this.attackHits = [];
+                for (let i = 0; i < numHits; i++) {
+                    this.attackHits.push({
+                        damage: damagePerHit,
+                        hitNumber: i + 1,
+                        totalHits: numHits,
+                        isPlayer: true
+                    });
+                }
+                
+                this.currentHitIndex = 0;
+                this.processNextHit();
+            },
+            
+            processNextHit() {
+                if (this.currentHitIndex >= this.attackHits.length) {
+                    this.showMoveSelection = false;
+                    // In Teacher Mode, NPC never takes a turn
+                    if (!this.teacherMode) {
+                        this.playerTurn = false;
+                        this.npcLastActionTime = Date.now();
+                        this.npcNextReactionTime = 0;
+                    }
+                    this.attackHits = [];
+                    this.currentHitIndex = 0;
+                    
+                    if (this.npcHealth <= 0) {
+                        this.battleOver = true;
+                        this.battleResult = 'win';
+                        this.battleMessage = "You Win!";
+                        this.checkWinAchievements();
+                    }
+                    this.updateBattleDisplay();
+                    return;
+                }
+                
+                const hit = this.attackHits[this.currentHitIndex];
+                
+                if (this.npcBlocking) {
+                    const damage = Math.max(1, Math.floor(hit.damage * 0.3));
+                    this.battleMessage = "";
+                    this.npcBlocking = false;
+                    this.npcHealth = Math.max(0, this.npcHealth - damage);
+                } else {
+                    const damage = hit.damage;
+                    this.battleMessage = "";
+                    this.npcHealth = Math.max(0, this.npcHealth - damage);
+                }
+                
+                this.battleMessageTimer = Date.now();
+                this.currentHitIndex++;
+                
+                if (this.currentHitIndex < this.attackHits.length) {
+                    setTimeout(() => this.processNextHit(), 500);
+                } else {
+                    this.showMoveSelection = false;
+                    // In Teacher Mode, NPC never takes a turn - keep player turn active
+                    if (!this.teacherMode) {
+                        this.playerTurn = false;
+                        this.npcLastActionTime = Date.now();
+                        this.npcNextReactionTime = 0;
+                    }
+                    this.attackHits = [];
+                    this.currentHitIndex = 0;
+                    
+                    if (this.npcHealth <= 0) {
+                        this.battleOver = true;
+                        this.battleResult = 'win';
+                        this.battleMessage = "You Win!";
+                        this.checkWinAchievements();
+                    }
+                    // Immediately update display to show turn indicator
+                    this.updateBattleDisplay();
+                }
+                
+                this.updateBattleDisplay();
+            },
+            
+            submitAnswer() {
+                const userAnswer = this.questionAnswer.trim().toUpperCase();
+                const correctAnswer = this.currentQuestion.answer.toUpperCase();
+                
+                if (userAnswer === correctAnswer) {
+                    const baseDamage = this.selectedCharacter.base_damage;
+                    const damage = Math.floor(baseDamage * this.moves[2].damage_multiplier);
+                    this.npcHealth = Math.max(0, this.npcHealth - damage);
+                    this.battleMessage = "";
+                    
+                    if (this.npcHealth <= 0) {
+                        this.battleOver = true;
+                        this.battleResult = 'win';
+                        this.battleMessage = "You Win!";
+                        this.checkWinAchievements();
+                    }
+                } else {
+                    this.battleMessage = "";
+                }
+                
+                this.showQuestion = false;
+                this.currentQuestion = null;
+                this.questionAnswer = '';
+                this.battleMessageTimer = Date.now();
+                // In Teacher Mode, NPC never takes a turn
+                if (!this.teacherMode) {
+                    this.playerTurn = false;
+                    this.npcLastActionTime = Date.now();
+                    this.npcNextReactionTime = 0;
+                }
+                this.updateBattleDisplay();
+            },
+            
+            generateMusicQuestion() {
+                const clef = this.getClefForInstrument(this.selectedCharacter.name);
+                const note = this.musicNotes[Math.floor(Math.random() * this.musicNotes.length)];
+                const numNotes = Math.floor(Math.random() * 3) + 3; // 3-5 notes
+                
+                const allNotes = [];
+                const availableNotes = [...this.musicNotes];
+                for (let i = 0; i < numNotes; i++) {
+                    const idx = Math.floor(Math.random() * availableNotes.length);
+                    allNotes.push(availableNotes[idx]);
+                    availableNotes.splice(idx, 1);
+                }
+                
+                if (!allNotes.includes(note)) {
+                    allNotes[Math.floor(Math.random() * allNotes.length)] = note;
+                }
+                
+                const circledIndex = allNotes.indexOf(note);
+                
+                this.currentQuestion = {
+                    question: "What note is circled?",
+                    notes: allNotes,
+                    circledIndex: circledIndex,
+                    answer: note,
+                    clef: clef
+                };
+                
+                this.renderQuestion();
+            },
+            
+            renderQuestion() {
+                document.getElementById('questionText').textContent = this.currentQuestion.question;
+                
+                const staffContainer = document.getElementById('staffContainer');
+                staffContainer.innerHTML = '';
+                
+                // Draw staff lines
+                for (let i = 0; i < 5; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'staff-line';
+                    line.style.top = (i * 12) + 'px';
+                    staffContainer.appendChild(line);
+                }
+                
+                // Draw notes
+                const noteSpacing = 500 / (this.currentQuestion.notes.length + 2);
+                this.currentQuestion.notes.forEach((note, i) => {
+                    const noteEl = document.createElement('div');
+                    noteEl.className = 'note';
+                    if (i === this.currentQuestion.circledIndex) {
+                        noteEl.classList.add('circled');
+                    }
+                    
+                    const position = this.getNotePositionOnStaff(note, this.currentQuestion.clef);
+                    noteEl.style.left = (100 + i * noteSpacing) + 'px';
+                    noteEl.style.top = (position * 6) + 'px';
+                    
+                    staffContainer.appendChild(noteEl);
+                });
+            },
+            
+            getClefForInstrument(instrumentName) {
+                if (["Flute", "Clarinet", "Saxophone"].includes(instrumentName)) {
+                    return "treble";
+                } else if (["Tuba", "Baritone", "Trombone"].includes(instrumentName)) {
+                    return "bass";
+                }
+                return "treble";
+            },
+            
+            getNotePositionOnStaff(note, clef) {
+                const notePositions = {
+                    "C": 0, "D": 1, "E": 2, "F": 3, "G": 4, "A": 5, "B": 6
+                };
+                let position = notePositions[note] || 0;
+                if (clef === "bass") {
+                    position += 2;
+                }
+                return position;
+            },
+            
+            // NPC AI
+            updateBattleLoop() {
+                // Always update display to keep turn indicator visible
+                if (this.currentScreen === 'battle') {
+                    this.updateBattleDisplay();
+                }
+                
+                if (this.battleOver || this.showQuestion || this.currentScreen !== 'battle') {
+                    setTimeout(() => this.updateBattleLoop(), 100);
+                    return;
+                }
+                
+                // Process multi-hit attacks
+                if (this.attackHits.length > 0 && this.currentHitIndex < this.attackHits.length) {
+                    setTimeout(() => this.updateBattleLoop(), 100);
+                    return;
+                }
+                
+                // NPC turn (skip in Teacher Mode)
+                if (!this.teacherMode && !this.playerTurn && this.npcHealth > 0 && this.playerHealth > 0) {
+                    const currentTime = Date.now();
+                    const timeSinceTurn = currentTime - this.npcLastActionTime;
+                    
+                    if (this.npcNextReactionTime === 0) {
+                        this.npcNextReactionTime = this.calculateNpcReactionTime();
+                    }
+                    
+                    if (timeSinceTurn >= this.npcNextReactionTime) {
+                        if (this.npcMoveSelection === null) {
+                            this.npcChooseMove();
+                        }
+                        
+                        if (this.npcMoveSelection === 'attack') {
+                            this.npcExecuteAttack();
+                        } else if (this.npcMoveSelection === 'block') {
+                            this.npcExecuteBlock();
+                        } else if (this.npcMoveSelection === 'super') {
+                            this.npcExecuteSuper();
+                        }
+                    }
+                }
+                
+                setTimeout(() => this.updateBattleLoop(), 100);
+            },
+            
+            npcChooseMove() {
+                if (this.teacherMode) {
+                    this.npcChooseMoveTeacherMode();
+                    return;
+                }
+                
+                const difficulty = this.selectedDifficultyIndex;
+                let moveWeights;
+                
+                if (difficulty === 0) { // Easy
+                    moveWeights = [0.7, 0.2, 0.1];
+                } else if (difficulty === 1) { // Medium
+                    moveWeights = [0.6, 0.25, 0.15];
+                } else if (difficulty === 2) { // Hard
+                    moveWeights = [0.5, 0.3, 0.2];
+                } else { // Expert
+                    if (this.npcHealth < this.npcMaxHealth * 0.3) {
+                        moveWeights = [0.4, 0.4, 0.2];
+                    } else if (this.npcHealth > this.npcMaxHealth * 0.7) {
+                        moveWeights = [0.4, 0.2, 0.4];
+                    } else {
+                        moveWeights = [0.45, 0.3, 0.25];
+                    }
+                }
+                
+                const rand = Math.random();
+                if (rand < moveWeights[0]) {
+                    this.npcMoveSelection = 'attack';
+                } else if (rand < moveWeights[0] + moveWeights[1]) {
+                    this.npcMoveSelection = 'block';
+                } else {
+                    this.npcMoveSelection = 'super';
+                }
+            },
+            
+            npcChooseMoveTeacherMode() {
+                const totalMoves = Object.values(this.learnedPlayerPatterns.preferred_moves).reduce((a, b) => a + b, 0);
+                let moveWeights;
+                
+                if (totalMoves === 0) {
+                    moveWeights = [0.4, 0.3, 0.3];
+                } else {
+                    const attackPct = this.learnedPlayerPatterns.preferred_moves.attack / totalMoves;
+                    const blockPct = this.learnedPlayerPatterns.preferred_moves.block / totalMoves;
+                    
+                    if (attackPct > 0.5) {
+                        moveWeights = [0.3, 0.5, 0.2];
+                    } else if (blockPct > 0.4) {
+                        moveWeights = [0.6, 0.2, 0.2];
+                    } else {
+                        moveWeights = [0.4, 0.3, 0.3];
+                    }
+                }
+                
+                const rand = Math.random();
+                if (rand < moveWeights[0]) {
+                    this.npcMoveSelection = 'attack';
+                } else if (rand < moveWeights[0] + moveWeights[1]) {
+                    this.npcMoveSelection = 'block';
+                } else {
+                    this.npcMoveSelection = 'super';
+                }
+            },
+            
+            npcExecuteAttack() {
+                const baseDamage = this.selectedNpc.base_damage;
+                const weight = this.selectedNpc.weight;
+                
+                let numHits = 1;
+                if (weight <= 2) {
+                    numHits = Math.floor(Math.random() * 2) + 2;
+                } else if (weight <= 4) {
+                    numHits = Math.floor(Math.random() * 2) + 1;
+                }
+                
+                let damagePerHit = baseDamage;
+                if (numHits > 1) {
+                    damagePerHit = Math.floor(damagePerHit * 0.9);
+                }
+                
+                if (!this.checkNpcAccuracy()) {
+                    this.battleMessage = "NPC attacks but misses!";
+                    this.battleMessageTimer = Date.now();
+                    this.playerTurn = true;
+                    this.npcLastActionTime = Date.now();
+                    this.npcNextReactionTime = 0;
+                    this.npcMoveSelection = null;
+                    this.updateBattleDisplay();
+                    return;
+                }
+                
+                this.attackHits = [];
+                for (let i = 0; i < numHits; i++) {
+                    this.attackHits.push({
+                        damage: damagePerHit,
+                        hitNumber: i + 1,
+                        totalHits: numHits,
+                        isNpc: true
+                    });
+                }
+                
+                this.currentHitIndex = 0;
+                this.processNpcHit();
+            },
+            
+            processNpcHit() {
+                if (this.currentHitIndex >= this.attackHits.length) {
+                    this.playerTurn = true;
+                    this.npcLastActionTime = Date.now();
+                    this.npcNextReactionTime = 0;
+                    this.attackHits = [];
+                    this.currentHitIndex = 0;
+                    this.npcMoveSelection = null;
+                    
+                    if (this.playerHealth <= 0) {
+                        this.battleOver = true;
+                        this.battleResult = 'lose';
+                        this.battleMessage = "You Lose!";
+                        this.checkLoseAchievements();
+                    }
+                    this.updateBattleDisplay();
+                    return;
+                }
+                
+                const hit = this.attackHits[this.currentHitIndex];
+                
+                if (this.playerBlocking) {
+                    const damage = Math.max(1, Math.floor(hit.damage * 0.3));
+                    if (hit.totalHits > 1) {
+                        this.battleMessage = `NPC Hit ${hit.hitNumber}/${hit.totalHits}! You block and take ${damage} damage!`;
+                    } else {
+                        this.battleMessage = `NPC attacks! You block and take ${damage} damage!`;
+                    }
+                    this.playerBlocking = false;
+                    this.playerHealth = Math.max(0, this.playerHealth - damage);
+                } else {
+                    const damage = hit.damage;
+                    if (hit.totalHits > 1) {
+                        this.battleMessage = `NPC Hit ${hit.hitNumber}/${hit.totalHits}: ${damage} damage!`;
+                    } else {
+                        this.battleMessage = `NPC deals ${damage} damage!`;
+                    }
+                    this.playerHealth = Math.max(0, this.playerHealth - damage);
+                }
+                
+                this.battleMessageTimer = Date.now();
+                this.currentHitIndex++;
+                
+                if (this.currentHitIndex < this.attackHits.length) {
+                    setTimeout(() => this.processNpcHit(), 500);
+                } else {
+                    this.playerTurn = true;
+                    this.npcLastActionTime = Date.now();
+                    this.npcNextReactionTime = 0;
+                    this.attackHits = [];
+                    this.currentHitIndex = 0;
+                    this.npcMoveSelection = null;
+                    
+                    if (this.playerHealth <= 0) {
+                        this.battleOver = true;
+                        this.battleResult = 'lose';
+                        this.battleMessage = "You Lose!";
+                        this.checkLoseAchievements();
+                    }
+                }
+                
+                this.updateBattleDisplay();
+            },
+            
+            npcExecuteBlock() {
+                this.npcBlocking = true;
+                this.battleMessage = "NPC prepares to block the next attack!";
+                this.battleMessageTimer = Date.now();
+                this.playerTurn = true;
+                this.npcLastActionTime = Date.now();
+                this.npcNextReactionTime = 0;
+                this.npcMoveSelection = null;
+                this.updateBattleDisplay();
+            },
+            
+            npcExecuteSuper() {
+                const accuracyRates = [0.5, 0.65, 0.8, 0.95];
+                const npcAccuracy = accuracyRates[this.selectedDifficultyIndex];
+                const isCorrect = Math.random() < npcAccuracy;
+                
+                if (isCorrect) {
+                    const baseDamage = this.selectedNpc.base_damage;
+                    const damage = Math.floor(baseDamage * this.moves[2].damage_multiplier);
+                    this.playerHealth = Math.max(0, this.playerHealth - damage);
+                    this.battleMessage = `NPC uses Super! Correct answer! Deals ${damage} damage!`;
+                } else {
+                    this.battleMessage = `NPC uses Super! Wrong answer! No damage dealt.`;
+                }
+                
+                this.battleMessageTimer = Date.now();
+                this.playerTurn = true;
+                this.npcLastActionTime = Date.now();
+                this.npcNextReactionTime = 0;
+                this.npcMoveSelection = null;
+                
+                if (this.playerHealth <= 0) {
+                    this.battleOver = true;
+                    this.battleResult = 'lose';
+                    this.battleMessage = "You Lose!";
+                    this.checkLoseAchievements();
+                }
+                this.updateBattleDisplay();
+            },
+            
+            calculateNpcReactionTime() {
+                const baseTimes = [2500, 1750, 1250, 750];
+                const variation = [500, 250, 250, 250];
+                const base = baseTimes[this.selectedDifficultyIndex];
+                const varAmount = Math.floor(Math.random() * variation[this.selectedDifficultyIndex] * 2) - variation[this.selectedDifficultyIndex];
+                const speedModifier = (10 - this.selectedNpc.speed) * 50;
+                return Math.max(300, base + varAmount - speedModifier);
+            },
+            
+            checkNpcAccuracy() {
+                const accuracyRates = [0.6, 0.75, 0.9, 1.0];
+                return Math.random() < accuracyRates[this.selectedDifficultyIndex];
+            },
+            
+            // Achievements
+            recordPlayerMove(moveType) {
+                if (moveType === 'super') {
+                    this.superMovesUsedThisBattle++;
+                }
+                
+                if (this.teacherMode) {
+                    this.currentBattleMoves.push(moveType);
+                    this.learnedPlayerPatterns.preferred_moves[moveType]++;
+                    
+                    const healthPercent = this.playerHealth / this.playerMaxHealth;
+                    let healthLevel = 'high';
+                    if (healthPercent < 0.33) healthLevel = 'low';
+                    else if (healthPercent < 0.67) healthLevel = 'medium';
+                    
+                    this.learnedPlayerPatterns.health_thresholds[healthLevel].push(moveType);
+                    
+                    if (moveType === 'block') {
+                        this.learnedPlayerPatterns.block_usage++;
+                    } else if (moveType === 'super') {
+                        this.learnedPlayerPatterns.super_usage++;
+                    }
+                }
+            },
+            
+            checkWinAchievements() {
+                if (!this.achievements.win.unlocked) {
+                    this.achievements.win.unlocked = true;
+                }
+                
+                if (!this.achievements.why.unlocked) {
+                    this.achievements.why.unlocked = true;
+                }
+                
+                if (!this.achievements.tune_i_love.unlocked) {
+                    if (this.selectedCharacter.name === 'Saxophone') {
+                        const healthPercent = this.playerHealth / this.playerMaxHealth;
+                        if (healthPercent < 0.5) {
+                            this.achievements.tune_i_love.unlocked = true;
+                            // Unlock Mafeoso
+                            const mafeoso = this.characters.find(c => c.name === 'Mafeoso');
+                            if (mafeoso) mafeoso.unlocked = true;
+                        }
+                    }
+                }
+                
+                if (!this.achievements.bird_plane.unlocked) {
+                    if (this.superMovesUsedThisBattle === 0) {
+                        this.achievements.bird_plane.unlocked = true;
+                    }
+                }
+                
+                this.renderAchievements();
+            },
+            
+            checkLoseAchievements() {
+                if (!this.achievements.pay_taxes.unlocked) {
+                    this.achievements.pay_taxes.unlocked = true;
+                }
+                this.renderAchievements();
+            },
+            
+            handleBattleEnd() {
+                if (this.teacherMode) {
+                    this.teacherBattleCount++;
+                    if (this.currentBattleMoves.length > 0) {
+                        this.learnedPlayerPatterns.move_sequences.push([...this.currentBattleMoves]);
+                    }
+                    
+                    if (this.teacherBattleCount < this.teacherMaxBattles) {
+                        // Continue to next battle
+                        this.startBattle();
+                        return;
+                    }
+                }
+                
+                // Return to character select
+                this.inBattle = false;
+                this.battleOver = false;
+                this.battleResult = null;
+                this.selectedCharacter = null;
+                this.selectedNpc = null;
+                this.selectedDifficulty = null;
+                this.teacherMode = false;
+                this.teacherBattleCount = 0;
+                this.showMoveSelection = false;
+                this.showQuestion = false;
+                this.playerBlocking = false;
+                this.selectedCharacterIndex = 0;
+                this.showCharacterSelect();
+            },
+            
+            // Keyboard input
+            setupKeyboard() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.currentScreen === 'characterSelect') {
+                        this.handleCharacterSelectInput(e);
+                    } else if (this.currentScreen === 'npcSelect') {
+                        this.handleNpcSelectInput(e);
+                    } else if (this.currentScreen === 'difficultySelect') {
+                        this.handleDifficultySelectInput(e);
+                    } else if (this.currentScreen === 'battle') {
+                        this.handleBattleInput(e);
+                    } else if (this.currentScreen === 'achievements') {
+                        if (e.key === 'Escape') {
+                            this.showScreen('title');
+                        }
+                    }
+                });
+            },
+            
+            handleCharacterSelectInput(e) {
+                const charsPerRow = 3;
+                if (e.key === 'ArrowLeft') {
+                    let newIndex = (this.selectedCharacterIndex - 1 + this.characters.length) % this.characters.length;
+                    while (newIndex !== this.selectedCharacterIndex && this.characters[newIndex].unlocked === false) {
+                        newIndex = (newIndex - 1 + this.characters.length) % this.characters.length;
+                    }
+                    this.selectedCharacterIndex = newIndex;
+                    this.renderCharacterSelect();
+                } else if (e.key === 'ArrowRight') {
+                    let newIndex = (this.selectedCharacterIndex + 1) % this.characters.length;
+                    while (newIndex !== this.selectedCharacterIndex && this.characters[newIndex].unlocked === false) {
+                        newIndex = (newIndex + 1) % this.characters.length;
+                    }
+                    this.selectedCharacterIndex = newIndex;
+                    this.renderCharacterSelect();
+                } else if (e.key === 'ArrowUp') {
+                    let newIndex = this.selectedCharacterIndex - charsPerRow;
+                    if (newIndex >= 0) {
+                        while (newIndex >= 0 && this.characters[newIndex].unlocked === false) {
+                            newIndex--;
+                        }
+                        if (newIndex >= 0) {
+                            this.selectedCharacterIndex = newIndex;
+                            this.renderCharacterSelect();
+                        }
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    let newIndex = this.selectedCharacterIndex + charsPerRow;
+                    if (newIndex < this.characters.length) {
+                        while (newIndex < this.characters.length && this.characters[newIndex].unlocked === false) {
+                            newIndex++;
+                        }
+                        if (newIndex < this.characters.length) {
+                            this.selectedCharacterIndex = newIndex;
+                            this.renderCharacterSelect();
+                        }
+                    }
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                    if (this.characters[this.selectedCharacterIndex].unlocked !== false) {
+                        this.showNpcSelect();
+                    }
+                } else if (e.key === 'Escape') {
+                    this.showScreen('title');
+                }
+            },
+            
+            handleNpcSelectInput(e) {
+                const charsPerRow = 3;
+                if (e.key === 'ArrowLeft') {
+                    this.selectedNpcIndex = (this.selectedNpcIndex - 1 + this.characters.length) % this.characters.length;
+                    this.renderNpcSelect();
+                } else if (e.key === 'ArrowRight') {
+                    this.selectedNpcIndex = (this.selectedNpcIndex + 1) % this.characters.length;
+                    this.renderNpcSelect();
+                } else if (e.key === 'ArrowUp') {
+                    const newIndex = this.selectedNpcIndex - charsPerRow;
+                    if (newIndex >= 0) {
+                        this.selectedNpcIndex = newIndex;
+                        this.renderNpcSelect();
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    const newIndex = this.selectedNpcIndex + charsPerRow;
+                    if (newIndex < this.characters.length) {
+                        this.selectedNpcIndex = newIndex;
+                        this.renderNpcSelect();
+                    }
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                    this.showDifficultySelect();
+                } else if (e.key === 'Escape') {
+                    this.showCharacterSelect();
+                }
+            },
+            
+            handleDifficultySelectInput(e) {
+                if (e.key === 'ArrowUp') {
+                    this.selectedDifficultyIndex = (this.selectedDifficultyIndex - 1 + this.difficulties.length) % this.difficulties.length;
+                    this.renderDifficultySelect();
+                } else if (e.key === 'ArrowDown') {
+                    this.selectedDifficultyIndex = (this.selectedDifficultyIndex + 1) % this.difficulties.length;
+                    this.renderDifficultySelect();
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                    this.showBattle();
+                } else if (e.key === 'Escape') {
+                    this.showNpcSelect();
+                }
+            },
+            
+            handleBattleInput(e) {
+                // Prevent default for game keys
+                if ([' ', 'Enter', 'ArrowUp', 'ArrowDown', '1', '2', '3', 'Escape'].includes(e.key)) {
+                    e.preventDefault();
+                }
+                
+                if (this.battleOver) {
+                    if (e.key === 'Enter') {
+                        this.handleBattleEnd();
+                    }
+                    return;
+                }
+                
+                if (this.showQuestion) {
+                    if (e.key === 'Enter') {
+                        this.submitAnswer();
+                    } else if (e.key === 'Backspace') {
+                        this.questionAnswer = this.questionAnswer.slice(0, -1);
+                        document.getElementById('answerInput').value = this.questionAnswer;
+                    } else if (e.key.length === 1 && /[A-Za-z0-9#]/.test(e.key)) {
+                        this.questionAnswer += e.key.toUpperCase();
+                        document.getElementById('answerInput').value = this.questionAnswer;
+                    }
+                    return;
+                }
+                
+                if (this.playerTurn && !this.battleOver) {
+                    if (!this.showMoveSelection) {
+                        // Show move menu on any key press during player turn
+                        if (e.key === ' ' || e.key === 'Enter' || e.key === '1' || e.key === '2' || e.key === '3') {
+                            this.showMoveSelection = true;
+                            this.selectedMoveIndex = 0;
+                            this.updateBattleDisplay();
+                        }
+                    } else {
+                        if (e.key === 'ArrowUp') {
+                            this.selectedMoveIndex = (this.selectedMoveIndex - 1 + this.moves.length) % this.moves.length;
+                            this.updateBattleDisplay();
+                        } else if (e.key === 'ArrowDown') {
+                            this.selectedMoveIndex = (this.selectedMoveIndex + 1) % this.moves.length;
+                            this.updateBattleDisplay();
+                        } else if (e.key === '1') {
+                            this.selectedMoveIndex = 0;
+                            this.executePlayerMove();
+                        } else if (e.key === '2') {
+                            this.selectedMoveIndex = 1;
+                            this.executePlayerMove();
+                        } else if (e.key === '3') {
+                            this.selectedMoveIndex = 2;
+                            this.executePlayerMove();
+                        } else if (e.key === 'Enter' || e.key === ' ') {
+                            this.executePlayerMove();
+                        } else if (e.key === 'Escape') {
+                            this.showMoveSelection = false;
+                            this.updateBattleDisplay();
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Initialize game when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            game.init();
+        });
+    </script>
+</body>
+</html>
