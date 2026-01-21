@@ -35,7 +35,9 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding-top: 50px;
+            overflow-y: auto;
         }
 
         .screen.active {
@@ -47,6 +49,20 @@
             color: #ffd700;
             margin-bottom: 20px;
             text-align: center;
+        }
+        
+        #titleScreen {
+            justify-content: flex-start;
+            padding-top: 30px;
+        }
+        
+        #titleButtons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            max-height: 400px;
         }
 
         h2 {
@@ -350,12 +366,13 @@
         <h1>Music RPG Attack Game</h1>
         <div class="countdown" id="countdown"></div>
         <div id="timeUpMessage" style="display: none;">
-            <h2>holy fuck it the end of the 1st</h2>
-            <h2>half of school</h2>
+            <h2>Time's Up!</h2>
         </div>
-        <div id="titleButtons" style="display: none;">
+        <div id="titleButtons" style="display: none; flex-direction: column; align-items: center; gap: 10px;">
             <button onclick="game.showCharacterSelect()">Start</button>
             <button onclick="game.showAchievements()">Achievements</button>
+            <button onclick="game.saveGame()">Save Game</button>
+            <button onclick="game.loadGame()">Load Game</button>
         </div>
     </div>
 
@@ -435,6 +452,11 @@
         <div class="instructions">Press ESC to return</div>
     </div>
 
+    <!-- Audio element for boss music -->
+    <audio id="bossMusic" loop>
+        <source src="" type="audio/mpeg">
+    </audio>
+
     <script>
         // Game state
         const game = {
@@ -455,6 +477,7 @@
                 why: {name: "Why", description: "Win as the character", unlocked: false},
                 tune_i_love: {name: "That the tune i love", description: "Win as Saxophone with under 50% health", unlocked: false},
                 bird_plane: {name: "It bird it a plane what nooooooo", description: "Win without using super moves", unlocked: false},
+                good_show: {name: "A Good Show", description: "Win a mirror match on Expert difficulty", unlocked: false},
             },
             
             // Characters
@@ -466,6 +489,7 @@
                 {name: "Baritone", color: "#ffffff", speed: 3, weight: 8, base_hp: 120, base_damage: 11},
                 {name: "Tuba", color: "#6496ff", speed: 2, weight: 10, base_hp: 130, base_damage: 12},
                 {name: "Mafeoso", color: "#ffd700", speed: 7, weight: 5, base_hp: 200, base_damage: 14, unlocked: false},
+                {name: "Artful", color: "#000000", speed: 5, weight: 5, base_hp: 150, base_damage: 25, unlocked: false},
             ],
             
             selectedCharacterIndex: 0,
@@ -475,10 +499,25 @@
             selectedDifficultyIndex: 0,
             selectedDifficulty: null,
             
-            difficulties: ["Easy", "Medium", "Hard", "Expert", "Teacher Mode"],
+            difficulties: ["Easy", "Medium", "Hard", "Expert", "Teacher Mode", "Boss Rush"],
             teacherMode: false,
             teacherBattleCount: 0,
             teacherMaxBattles: 3,
+            
+            // Boss Rush mode
+            bossRushMode: false,
+            currentBossIndex: 0,
+            totalBosses: 4,
+            bosses: [
+                // Boss 1 - Dark checkerboard figure with spiky hands and candy necklace
+                {name: "The Shadow", color: "#333333", speed: 5, weight: 5, base_hp: 300, base_damage: 10, description: "A dark, menacing figure with spiky hands", musicFile: "FF9CAE (Color and Electricity c00lkidd) __ FORSAKEN OST.mp3"},
+                // Boss 2 - Yellow/orange blocky robot with glowing aura
+                {name: "Harken", color: "#ffd700", speed: 6, weight: 4, base_hp: 400, base_damage: 20, description: "A bright blocky construct of energy", musicFile: "Hark, The _Angel_ Bleeds. - Die Of Death OST (Harken's Theme).mp3"},
+                // Boss 3 - Sans (1 HP, 99% dodge chance)
+                {name: "Sans", color: "#ffffff", speed: 10, weight: 1, base_hp: 1, base_damage: 15, description: "A skeleton with incredible dodging ability", musicFile: "MEGALOVANIA 4.mp3", hasDodge: true, dodgeChance: 0.99},
+                // Boss 4 - Purple alien creature with pink tentacles and long blue legs
+                {name: "Kinito", color: "#dda0dd", speed: 7, weight: 3, base_hp: 555, base_damage: 15, description: "A whimsical alien creature", musicFile: "【KinitoPET Song】 Best Friends by  _@OR3Omusic_.mp3"},
+            ],
             
             // Battle state
             inBattle: false,
@@ -539,13 +578,82 @@
                 this.updateCountdown();
                 setInterval(() => this.updateCountdown(), 1000);
                 setTimeout(() => {
-                    document.getElementById('titleButtons').style.display = 'block';
+                    document.getElementById('titleButtons').style.display = 'flex';
                 }, 1000);
                 this.setupKeyboard();
                 this.renderCharacterSelect();
                 this.renderNpcSelect();
                 this.renderDifficultySelect();
                 this.renderAchievements();
+                // Try to load saved game on startup
+                this.loadGame();
+            },
+            
+            // Save/Load system
+            saveGame(showAlert = true) {
+                try {
+                    const saveData = {
+                        achievements: this.achievements,
+                        characters: this.characters.map(char => ({
+                            name: char.name,
+                            unlocked: char.unlocked !== undefined ? char.unlocked : true
+                        })),
+                        saveDate: new Date().toISOString()
+                    };
+                    localStorage.setItem('musicRPG_save', JSON.stringify(saveData));
+                    if (showAlert) {
+                        alert('Game saved successfully!');
+                    }
+                } catch (error) {
+                    if (showAlert) {
+                        alert('Error saving game: ' + error.message);
+                    }
+                }
+            },
+            
+            loadGame() {
+                try {
+                    const saveData = localStorage.getItem('musicRPG_save');
+                    if (!saveData) {
+                        alert('No save data found.');
+                        return; // No save data found
+                    }
+                    
+                    const data = JSON.parse(saveData);
+                    
+                    // Load achievements
+                    if (data.achievements) {
+                        Object.keys(data.achievements).forEach(key => {
+                            if (this.achievements[key] && data.achievements[key].unlocked !== undefined) {
+                                this.achievements[key].unlocked = data.achievements[key].unlocked;
+                            }
+                        });
+                    }
+                    
+                    // Load character unlock status
+                    if (data.characters) {
+                        data.characters.forEach(savedChar => {
+                            const char = this.characters.find(c => c.name === savedChar.name);
+                            if (char && savedChar.unlocked !== undefined) {
+                                char.unlocked = savedChar.unlocked;
+                            }
+                        });
+                    }
+                    
+                    // Update displays
+                    this.renderCharacterSelect();
+                    this.renderAchievements();
+                    
+                    // Show confirmation
+                    if (data.saveDate) {
+                        const saveDate = new Date(data.saveDate);
+                        alert('Game loaded successfully!\nSaved: ' + saveDate.toLocaleString());
+                    } else {
+                        alert('Game loaded successfully!');
+                    }
+                } catch (error) {
+                    alert('Error loading game: ' + error.message);
+                }
             },
             
             // Countdown timer
@@ -715,9 +823,25 @@
             // Battle system
             startBattle() {
                 this.selectedCharacter = this.characters[this.selectedCharacterIndex];
-                this.selectedNpc = this.characters[this.selectedNpcIndex];
                 this.selectedDifficulty = this.difficulties[this.selectedDifficultyIndex];
                 this.teacherMode = this.selectedDifficultyIndex === 4;
+                this.bossRushMode = this.selectedDifficultyIndex === 5;
+                
+                // In Boss Rush, use the current boss instead of selected NPC
+                if (this.bossRushMode) {
+                    // Reset boss index if starting fresh (not continuing from previous boss)
+                    if (this.currentBossIndex === 0 || !this.inBattle) {
+                        this.currentBossIndex = 0;
+                        // Reset player health at start of boss rush
+                        this.playerHealth = this.selectedCharacter.base_hp;
+                        this.playerMaxHealth = this.selectedCharacter.base_hp;
+                    }
+                    this.selectedNpc = this.bosses[this.currentBossIndex];
+                } else {
+                    this.selectedNpc = this.characters[this.selectedNpcIndex];
+                    this.playerHealth = this.selectedCharacter.base_hp;
+                    this.playerMaxHealth = this.selectedCharacter.base_hp;
+                }
                 
                 if (this.teacherMode) {
                     this.teacherBattleCount = 0;
@@ -730,8 +854,10 @@
                     };
                 }
                 
-                this.playerHealth = this.selectedCharacter.base_hp;
-                this.playerMaxHealth = this.selectedCharacter.base_hp;
+                if (!this.bossRushMode) {
+                    this.playerHealth = this.selectedCharacter.base_hp;
+                    this.playerMaxHealth = this.selectedCharacter.base_hp;
+                }
                 this.npcHealth = this.selectedNpc.base_hp;
                 this.npcMaxHealth = this.selectedNpc.base_hp;
                 
@@ -739,7 +865,11 @@
                 this.playerTurn = this.teacherMode ? true : (this.selectedCharacter.speed >= this.selectedNpc.speed);
                 this.battleOver = false;
                 this.battleResult = null;
-                this.battleMessage = this.teacherMode ? "Teacher Mode: Battle Start! NPC is learning and won't attack." : "Battle Start!";
+                if (this.bossRushMode) {
+                    this.battleMessage = `Boss Rush: Boss ${this.currentBossIndex + 1}/${this.totalBosses} - ${this.selectedNpc.name}!`;
+                } else {
+                    this.battleMessage = this.teacherMode ? "Teacher Mode: Battle Start! NPC is learning and won't attack." : "Battle Start!";
+                }
                 this.battleMessageTimer = Date.now();
                 this.superMovesUsedThisBattle = 0;
                 this.blocksUsed = 0;
@@ -749,6 +879,24 @@
                 this.npcMoveSelection = null;
                 this.npcLastActionTime = Date.now();
                 this.npcNextReactionTime = 0;
+                
+                // Play boss music if in boss rush mode
+                if (this.bossRushMode && this.selectedNpc.musicFile) {
+                    const bossMusic = document.getElementById('bossMusic');
+                    if (bossMusic) {
+                        bossMusic.src = this.selectedNpc.musicFile;
+                        bossMusic.play().catch(e => {
+                            console.log('Could not play boss music:', e);
+                        });
+                    }
+                } else {
+                    // Stop boss music if not in boss rush
+                    const bossMusic = document.getElementById('bossMusic');
+                    if (bossMusic) {
+                        bossMusic.pause();
+                        bossMusic.src = '';
+                    }
+                }
                 
                 this.updateBattleDisplay();
                 this.updateBattleLoop();
@@ -781,6 +929,23 @@
                     battleMessageEl.style.display = 'none';
                 } else {
                     battleMessageEl.style.display = 'block';
+                }
+                
+                // Show boss rush progress indicator
+                let bossRushIndicator = document.getElementById('bossRushIndicator');
+                if (this.bossRushMode) {
+                    if (!bossRushIndicator) {
+                        bossRushIndicator = document.createElement('div');
+                        bossRushIndicator.id = 'bossRushIndicator';
+                        bossRushIndicator.style.cssText = 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(255, 0, 0, 0.9); padding: 10px 20px; border: 2px solid #ffd700; font-size: 16px; color: #fff; z-index: 10; border-radius: 5px; font-weight: bold;';
+                        document.getElementById('battleScreen').appendChild(bossRushIndicator);
+                    }
+                    bossRushIndicator.textContent = `BOSS RUSH: ${this.currentBossIndex + 1}/${this.totalBosses} - ${this.selectedNpc.name}`;
+                    bossRushIndicator.style.display = 'block';
+                } else {
+                    if (bossRushIndicator) {
+                        bossRushIndicator.style.display = 'none';
+                    }
                 }
                 
                 // Show turn indicator
@@ -851,7 +1016,17 @@
                     text.className = 'win-lose-text ' + (this.battleResult === 'win' ? 'win' : 'lose');
                     
                     let message = '';
-                    if (this.teacherMode) {
+                    if (this.bossRushMode) {
+                        if (this.battleResult === 'win') {
+                            if (this.currentBossIndex < this.totalBosses - 1) {
+                                message = `Boss ${this.currentBossIndex + 1} Defeated! Press Continue for next boss...`;
+                            } else {
+                                message = 'Boss Rush Complete! All bosses defeated!';
+                            }
+                        } else {
+                            message = 'Boss Rush Failed! Press Continue to return.';
+                        }
+                    } else if (this.teacherMode) {
                         message = `Teacher Mode: Battle ${this.teacherBattleCount + 1}/${this.teacherMaxBattles}`;
                     } else {
                         message = 'Press Continue to return to character select';
@@ -873,6 +1048,15 @@
                 
                 // Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Check if this is a boss and draw boss sprite
+                const isBoss = this.bosses.some(boss => boss.name === character.name);
+                if (isBoss) {
+                    this.drawBossSprite(ctx, canvas, character);
+                    container.innerHTML = '';
+                    container.appendChild(canvas);
+                    return;
+                }
                 
                 const centerX = canvas.width / 2;
                 const headY = 20;
@@ -1062,6 +1246,58 @@
                     ctx.ellipse(centerX + 40, instrumentY + 35, 10, 6, 0, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
+                } else if (character.name === 'Artful') {
+                    // Artful - top hat, black and white suit, formal appearance
+                    // Top hat
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, headY - 8, 16, 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, headY - 12, 12, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Mask-like face (black lower face)
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 8, headY + 2, 16, 10);
+                    
+                    // White shirt with black tie
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(centerX - 12, bodyY, 24, bodyHeight);
+                    // Tie
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 2, bodyY + 5, 4, 15);
+                    
+                    // Black vest with buttons
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 11, bodyY + 3, 22, bodyHeight - 6);
+                    // Buttons
+                    ctx.fillStyle = '#cccccc';
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(centerX, bodyY + 8 + (i * 6), 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // Black sleeves/gloves
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyTopWidth/2 - armLength + 5, armY, armLength, armWidth + 2);
+                    ctx.fillRect(centerX + bodyTopWidth/2 - 5, armY, armLength, armWidth + 2);
+                    
+                    // Black trousers
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyBottomWidth/2 + 6, legY, legWidth, legHeight);
+                    ctx.fillRect(centerX + bodyBottomWidth/2 - legWidth - 6, legY, legWidth, legHeight);
+                    
+                    // Black shoes
+                    ctx.fillRect(centerX - bodyBottomWidth/2 + 4, legY + legHeight, legWidth + 4, 4);
+                    ctx.fillRect(centerX + bodyBottomWidth/2 - legWidth - 10, legY + legHeight, legWidth + 4, 4);
+                    
+                    // Cylindrical object (microphone/instrument) in left hand
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyTopWidth/2 - armLength - 5, armY - 5, 6, 25);
+                    ctx.fillStyle = '#666666';
+                    ctx.fillRect(centerX - bodyTopWidth/2 - armLength - 5, armY - 8, 6, 3);
                 }
                 
                 // Character name
@@ -1073,6 +1309,531 @@
                 // Clear container and add canvas
                 container.innerHTML = '';
                 container.appendChild(canvas);
+            },
+            
+            drawBossSprite(ctx, canvas, boss) {
+                const centerX = canvas.width / 2;
+                const headY = 20;
+                const headRadius = 18; // Larger head for boss
+                
+                // Draw boss based on name
+                if (boss.name === "The Shadow") {
+                    // Draw checkerboard pattern function
+                    const drawCheckerboard = (x, y, width, height, cellSize) => {
+                        ctx.fillStyle = '#333333';
+                        ctx.fillRect(x, y, width, height);
+                        ctx.fillStyle = '#666666';
+                        for (let i = 0; i < width; i += cellSize) {
+                            for (let j = 0; j < height; j += cellSize) {
+                                if ((i / cellSize + j / cellSize) % 2 === 0) {
+                                    ctx.fillRect(x + i, y + j, cellSize, cellSize);
+                                }
+                            }
+                        }
+                    };
+                    
+                    // Thick black outline
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    
+                    // Head - large round with angry expression
+                    const headSize = 20;
+                    drawCheckerboard(centerX - headSize, headY, headSize * 2, headSize * 2, 4);
+                    ctx.strokeRect(centerX - headSize, headY, headSize * 2, headSize * 2);
+                    
+                    // Angry eyes - narrow horizontal slits
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 8, headY + 6, 6, 2);
+                    ctx.fillRect(centerX + 2, headY + 6, 6, 2);
+                    
+                    // Wide open mouth with sharp teeth
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 6, headY + 14, 12, 4);
+                    // Teeth
+                    ctx.fillStyle = '#ffffff';
+                    for (let i = 0; i < 6; i++) {
+                        ctx.fillRect(centerX - 5 + (i * 2), headY + 14, 1, 4);
+                    }
+                    
+                    // Body - checkerboard pattern
+                    const bodyY = headY + headSize * 2 + 2;
+                    const bodyWidth = 30;
+                    const bodyHeight = 40;
+                    drawCheckerboard(centerX - bodyWidth/2, bodyY, bodyWidth, bodyHeight, 4);
+                    ctx.strokeRect(centerX - bodyWidth/2, bodyY, bodyWidth, bodyHeight);
+                    
+                    // Arms extended - checkerboard pattern
+                    const armY = bodyY + 8;
+                    const armLength = 30;
+                    const armWidth = 8;
+                    // Left arm
+                    drawCheckerboard(centerX - bodyWidth/2 - armLength, armY, armLength, armWidth, 4);
+                    ctx.strokeRect(centerX - bodyWidth/2 - armLength, armY, armLength, armWidth);
+                    // Right arm
+                    drawCheckerboard(centerX + bodyWidth/2, armY, armLength, armWidth, 4);
+                    ctx.strokeRect(centerX + bodyWidth/2, armY, armLength, armWidth);
+                    
+                    // Spiky hands - large bulbous fists with spikes
+                    const handSize = 12;
+                    // Left hand
+                    ctx.fillStyle = '#333333';
+                    ctx.beginPath();
+                    ctx.arc(centerX - bodyWidth/2 - armLength - handSize/2, armY + armWidth/2, handSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Spikes on left hand
+                    ctx.fillStyle = '#000000';
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * Math.PI * 2 / 5) - Math.PI / 2;
+                        const spikeX = centerX - bodyWidth/2 - armLength - handSize/2 + Math.cos(angle) * (handSize + 3);
+                        const spikeY = armY + armWidth/2 + Math.sin(angle) * (handSize + 3);
+                        ctx.beginPath();
+                        ctx.moveTo(spikeX, spikeY);
+                        ctx.lineTo(spikeX + Math.cos(angle) * 4, spikeY + Math.sin(angle) * 4);
+                        ctx.lineTo(spikeX + Math.cos(angle + 0.3) * 3, spikeY + Math.sin(angle + 0.3) * 3);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    
+                    // Right hand
+                    ctx.fillStyle = '#333333';
+                    ctx.beginPath();
+                    ctx.arc(centerX + bodyWidth/2 + armLength + handSize/2, armY + armWidth/2, handSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Spikes on right hand
+                    ctx.fillStyle = '#000000';
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * Math.PI * 2 / 5) - Math.PI / 2;
+                        const spikeX = centerX + bodyWidth/2 + armLength + handSize/2 + Math.cos(angle) * (handSize + 3);
+                        const spikeY = armY + armWidth/2 + Math.sin(angle) * (handSize + 3);
+                        ctx.beginPath();
+                        ctx.moveTo(spikeX, spikeY);
+                        ctx.lineTo(spikeX + Math.cos(angle) * 4, spikeY + Math.sin(angle) * 4);
+                        ctx.lineTo(spikeX + Math.cos(angle + 0.3) * 3, spikeY + Math.sin(angle + 0.3) * 3);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    
+                    // Legs - checkerboard pattern
+                    const legY = bodyY + bodyHeight;
+                    const legWidth = 10;
+                    const legHeight = 30;
+                    // Left leg
+                    drawCheckerboard(centerX - bodyWidth/2 + 5, legY, legWidth, legHeight, 4);
+                    ctx.strokeRect(centerX - bodyWidth/2 + 5, legY, legWidth, legHeight);
+                    // Right leg
+                    drawCheckerboard(centerX + bodyWidth/2 - legWidth - 5, legY, legWidth, legHeight, 4);
+                    ctx.strokeRect(centerX + bodyWidth/2 - legWidth - 5, legY, legWidth, legHeight);
+                    
+                    // Flat boot-like feet
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyWidth/2 + 3, legY + legHeight, legWidth + 4, 6);
+                    ctx.fillRect(centerX + bodyWidth/2 - legWidth - 7, legY + legHeight, legWidth + 4, 6);
+                    
+                    // Candy necklace - colorful glowing orbs
+                    const candyColors = ['#ff8800', '#ff69b4', '#ffffff', '#00ff00', '#0088ff', '#8800ff', '#ff69b4'];
+                    const candyY = bodyY + 5;
+                    const candySpacing = 8;
+                    const candyStartX = centerX - (candyColors.length * candySpacing) / 2;
+                    for (let i = 0; i < candyColors.length; i++) {
+                        const candyX = candyStartX + (i * candySpacing);
+                        // Glow effect
+                        ctx.shadowColor = candyColors[i];
+                        ctx.shadowBlur = 8;
+                        // Candy orb
+                        ctx.fillStyle = candyColors[i];
+                        ctx.beginPath();
+                        ctx.arc(candyX, candyY, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        // Swirl pattern inside
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(candyX, candyY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.shadowBlur = 0; // Reset shadow
+                } else if (boss.name === "Harken") {
+                    // Harken - Yellow/orange blocky robot with glowing aura
+                    const brightYellow = '#ffd700';
+                    const orangeYellow = '#ff8800';
+                    const darkYellow = '#cc9900';
+                    
+                    // Glowing aura effect - white star-like bursts behind character
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = '#ffffff';
+                    // Draw star-like bursts
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i * Math.PI * 2 / 8);
+                        const burstX = centerX + Math.cos(angle) * 25;
+                        const burstY = headY + 15 + Math.sin(angle) * 20;
+                        ctx.beginPath();
+                        for (let j = 0; j < 5; j++) {
+                            const spikeAngle = angle + (j * Math.PI * 2 / 5);
+                            const spikeX = burstX + Math.cos(spikeAngle) * 8;
+                            const spikeY = burstY + Math.sin(spikeAngle) * 8;
+                            if (j === 0) {
+                                ctx.moveTo(spikeX, spikeY);
+                            } else {
+                                ctx.lineTo(spikeX, spikeY);
+                            }
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    ctx.shadowBlur = 0;
+                    
+                    // Head - square yellow block
+                    const headSize = 18;
+                    ctx.fillStyle = brightYellow;
+                    ctx.fillRect(centerX - headSize/2, headY, headSize, headSize);
+                    ctx.strokeStyle = darkYellow;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(centerX - headSize/2, headY, headSize, headSize);
+                    
+                    // Face - closed eyes with glow
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    // Downward curving line for closed eyes
+                    ctx.beginPath();
+                    ctx.arc(centerX, headY + 8, 6, 0, Math.PI);
+                    ctx.stroke();
+                    // Three vertical lines beneath (glow/lashes)
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - 2 + (i * 2), headY + 12);
+                        ctx.lineTo(centerX - 2 + (i * 2), headY + 14);
+                        ctx.stroke();
+                    }
+                    
+                    // Ear-like connectors on sides
+                    ctx.fillStyle = '#cccccc';
+                    ctx.fillRect(centerX - headSize/2 - 4, headY + 6, 3, 6);
+                    ctx.fillRect(centerX + headSize/2 + 1, headY + 6, 3, 6);
+                    
+                    // Torso - angular X/lightning bolt shape
+                    const torsoY = headY + headSize + 2;
+                    const torsoWidth = 28;
+                    const torsoHeight = 35;
+                    ctx.fillStyle = brightYellow;
+                    ctx.beginPath();
+                    // X shape
+                    ctx.moveTo(centerX - torsoWidth/2, torsoY);
+                    ctx.lineTo(centerX - 8, torsoY + torsoHeight/2);
+                    ctx.lineTo(centerX - torsoWidth/2, torsoY + torsoHeight);
+                    ctx.lineTo(centerX, torsoY + torsoHeight - 5);
+                    ctx.lineTo(centerX + torsoWidth/2, torsoY + torsoHeight);
+                    ctx.lineTo(centerX + 8, torsoY + torsoHeight/2);
+                    ctx.lineTo(centerX + torsoWidth/2, torsoY);
+                    ctx.lineTo(centerX, torsoY + 5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = darkYellow;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Left arm (viewer's right) - darker orange-yellow, extended
+                    const leftArmY = torsoY + 8;
+                    const leftArmX = centerX - torsoWidth/2 - 15;
+                    ctx.fillStyle = orangeYellow;
+                    // Upper segment
+                    ctx.fillRect(leftArmX, leftArmY, 12, 8);
+                    ctx.strokeRect(leftArmX, leftArmY, 12, 8);
+                    // Lower segment (bent forward)
+                    ctx.fillRect(leftArmX + 3, leftArmY + 8, 12, 8);
+                    ctx.strokeRect(leftArmX + 3, leftArmY + 8, 12, 8);
+                    // Hand block
+                    ctx.fillRect(leftArmX + 6, leftArmY + 16, 8, 6);
+                    ctx.strokeRect(leftArmX + 6, leftArmY + 16, 8, 6);
+                    
+                    // Right arm (viewer's left) - lighter yellow, bent at elbow
+                    const rightArmY = torsoY + 8;
+                    const rightArmX = centerX + torsoWidth/2 + 3;
+                    ctx.fillStyle = brightYellow;
+                    // Upper segment
+                    ctx.fillRect(rightArmX, rightArmY, 12, 8);
+                    ctx.strokeRect(rightArmX, rightArmY, 12, 8);
+                    // Elbow bend
+                    ctx.fillRect(rightArmX - 4, rightArmY + 8, 8, 8);
+                    ctx.strokeRect(rightArmX - 4, rightArmY + 8, 8, 8);
+                    // Lower segment
+                    ctx.fillRect(rightArmX - 8, rightArmY + 16, 12, 8);
+                    ctx.strokeRect(rightArmX - 8, rightArmY + 16, 12, 8);
+                    // Hand block
+                    ctx.fillRect(rightArmX - 6, rightArmY + 24, 8, 6);
+                    ctx.strokeRect(rightArmX - 6, rightArmY + 24, 8, 6);
+                    
+                    // Legs - stacked rectangular blocks
+                    const legY = torsoY + torsoHeight;
+                    const legWidth = 10;
+                    
+                    // Left leg (viewer's right) - two bent segments
+                    ctx.fillStyle = brightYellow;
+                    // Upper segment
+                    ctx.fillRect(centerX - torsoWidth/2 + 5, legY, legWidth, 10);
+                    ctx.strokeRect(centerX - torsoWidth/2 + 5, legY, legWidth, 10);
+                    // Bent segment
+                    ctx.fillRect(centerX - torsoWidth/2 + 7, legY + 10, legWidth, 10);
+                    ctx.strokeRect(centerX - torsoWidth/2 + 7, legY + 10, legWidth, 10);
+                    // Foot
+                    ctx.fillRect(centerX - torsoWidth/2 + 5, legY + 20, legWidth + 4, 6);
+                    ctx.strokeRect(centerX - torsoWidth/2 + 5, legY + 20, legWidth + 4, 6);
+                    
+                    // Right leg (viewer's left) - three stacked segments, tapering
+                    // Upper segment
+                    ctx.fillRect(centerX + torsoWidth/2 - legWidth - 5, legY, legWidth, 8);
+                    ctx.strokeRect(centerX + torsoWidth/2 - legWidth - 5, legY, legWidth, 8);
+                    // Middle segment (slightly narrower)
+                    ctx.fillRect(centerX + torsoWidth/2 - legWidth - 3, legY + 8, legWidth - 2, 8);
+                    ctx.strokeRect(centerX + torsoWidth/2 - legWidth - 3, legY + 8, legWidth - 2, 8);
+                    // Lower segment (narrower)
+                    ctx.fillRect(centerX + torsoWidth/2 - legWidth - 1, legY + 16, legWidth - 4, 8);
+                    ctx.strokeRect(centerX + torsoWidth/2 - legWidth - 1, legY + 16, legWidth - 4, 8);
+                    // Foot
+                    ctx.fillRect(centerX + torsoWidth/2 - legWidth - 3, legY + 24, legWidth + 2, 6);
+                    ctx.strokeRect(centerX + torsoWidth/2 - legWidth - 3, legY + 24, legWidth + 2, 6);
+                } else if (boss.name === "Sans") {
+                    // Sans - Skeleton in black hoodie
+                    // Head - rounded skull
+                    const headSize = 20;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(centerX, headY + headSize/2, headSize/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Large oval eye sockets
+                    ctx.fillStyle = '#000000';
+                    // Left eye
+                    ctx.beginPath();
+                    ctx.ellipse(centerX - 5, headY + 8, 4, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Right eye
+                    ctx.beginPath();
+                    ctx.ellipse(centerX + 5, headY + 8, 4, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Small triangular nose hole
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, headY + 12);
+                    ctx.lineTo(centerX - 2, headY + 15);
+                    ctx.lineTo(centerX + 2, headY + 15);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Wide permanent grin with square teeth
+                    const grinY = headY + 18;
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - 8, grinY, 16, 3);
+                    // Square teeth
+                    ctx.fillStyle = '#ffffff';
+                    for (let i = 0; i < 6; i++) {
+                        ctx.fillRect(centerX - 7 + (i * 2.5), grinY, 2, 3);
+                    }
+                    
+                    // Hoodie/jacket - black with white collar
+                    const bodyY = headY + headSize + 2;
+                    const bodyWidth = 28;
+                    const bodyHeight = 35;
+                    
+                    // White inner lining/collar
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(centerX - bodyWidth/2, bodyY, bodyWidth, 8);
+                    // Black main body
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyWidth/2, bodyY + 8, bodyWidth, bodyHeight - 8);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(centerX - bodyWidth/2, bodyY, bodyWidth, bodyHeight);
+                    
+                    // Arms - black sleeves, bent at elbows (hands in pockets)
+                    const armY = bodyY + 10;
+                    // Left arm
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX - bodyWidth/2 - 12, armY, 10, 8);
+                    ctx.fillRect(centerX - bodyWidth/2 - 15, armY + 8, 8, 8);
+                    // Right arm
+                    ctx.fillRect(centerX + bodyWidth/2 + 2, armY, 10, 8);
+                    ctx.fillRect(centerX + bodyWidth/2 + 5, armY + 8, 8, 8);
+                    
+                    // Black shorts
+                    const shortsY = bodyY + bodyHeight;
+                    ctx.fillRect(centerX - bodyWidth/2, shortsY, bodyWidth, 8);
+                    
+                    // Legs - black
+                    const legY = shortsY + 8;
+                    const legWidth = 8;
+                    const legHeight = 25;
+                    // Left leg
+                    ctx.fillRect(centerX - bodyWidth/2 + 4, legY, legWidth, legHeight);
+                    // Right leg
+                    ctx.fillRect(centerX + bodyWidth/2 - legWidth - 4, legY, legWidth, legHeight);
+                    
+                    // White rounded feet/slippers
+                    ctx.fillStyle = '#ffffff';
+                    // Left foot
+                    ctx.beginPath();
+                    ctx.arc(centerX - bodyWidth/2 + 8, legY + legHeight, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    // Right foot
+                    ctx.beginPath();
+                    ctx.arc(centerX + bodyWidth/2 - 8, legY + legHeight, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (boss.name === "Kinito") {
+                    // Kinito - Purple alien with pink tentacles and long blue legs
+                    const lightPurple = '#dda0dd';
+                    const vibrantPink = '#ff69b4';
+                    const darkBlue = '#191970';
+                    
+                    // Main body - large light purple spherical shape (slightly flattened at bottom)
+                    const bodyRadius = 25;
+                    const bodyY = headY + 5;
+                    ctx.fillStyle = lightPurple;
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, bodyY + bodyRadius, bodyRadius, bodyRadius * 0.9, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Two wide-set white eyes
+                    const eyeY = bodyY + bodyRadius - 8;
+                    // Left eye
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(centerX - 8, eyeY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Left pupil
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(centerX - 8, eyeY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Right eye
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(centerX + 8, eyeY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Right pupil
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(centerX + 8, eyeY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Pink spiky tentacles on upper sides (4-5 on each side)
+                    const tentacleY = bodyY + 5;
+                    const tentacleColors = [vibrantPink, '#ff1493', '#ff69b4', '#ff1493', vibrantPink];
+                    
+                    // Left side tentacles
+                    for (let i = 0; i < 5; i++) {
+                        const tentacleX = centerX - bodyRadius - 5;
+                        const tentacleOffsetY = tentacleY + (i * 4) - 8;
+                        const tentacleLength = 12 + (i * 2);
+                        const angle = -0.3 + (i * 0.15); // Curving upwards and outwards
+                        
+                        ctx.strokeStyle = tentacleColors[i];
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(tentacleX, tentacleOffsetY);
+                        ctx.lineTo(
+                            tentacleX + Math.cos(angle) * tentacleLength,
+                            tentacleOffsetY + Math.sin(angle) * tentacleLength
+                        );
+                        ctx.stroke();
+                        // Jagged tip
+                        const tipX = tentacleX + Math.cos(angle) * tentacleLength;
+                        const tipY = tentacleOffsetY + Math.sin(angle) * tentacleLength;
+                        ctx.beginPath();
+                        ctx.moveTo(tipX, tipY);
+                        ctx.lineTo(tipX + Math.cos(angle + 0.3) * 3, tipY + Math.sin(angle + 0.3) * 3);
+                        ctx.lineTo(tipX + Math.cos(angle - 0.3) * 3, tipY + Math.sin(angle - 0.3) * 3);
+                        ctx.closePath();
+                        ctx.fillStyle = tentacleColors[i];
+                        ctx.fill();
+                    }
+                    
+                    // Right side tentacles
+                    for (let i = 0; i < 5; i++) {
+                        const tentacleX = centerX + bodyRadius + 5;
+                        const tentacleOffsetY = tentacleY + (i * 4) - 8;
+                        const tentacleLength = 12 + (i * 2);
+                        const angle = Math.PI + 0.3 - (i * 0.15); // Curving upwards and outwards
+                        
+                        ctx.strokeStyle = tentacleColors[i];
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(tentacleX, tentacleOffsetY);
+                        ctx.lineTo(
+                            tentacleX + Math.cos(angle) * tentacleLength,
+                            tentacleOffsetY + Math.sin(angle) * tentacleLength
+                        );
+                        ctx.stroke();
+                        // Jagged tip
+                        const tipX = tentacleX + Math.cos(angle) * tentacleLength;
+                        const tipY = tentacleOffsetY + Math.sin(angle) * tentacleLength;
+                        ctx.beginPath();
+                        ctx.moveTo(tipX, tipY);
+                        ctx.lineTo(tipX + Math.cos(angle + 0.3) * 3, tipY + Math.sin(angle + 0.3) * 3);
+                        ctx.lineTo(tipX + Math.cos(angle - 0.3) * 3, tipY + Math.sin(angle - 0.3) * 3);
+                        ctx.closePath();
+                        ctx.fillStyle = tentacleColors[i];
+                        ctx.fill();
+                    }
+                    
+                    // Two very long, thin dark blue legs
+                    const legStartY = bodyY + bodyRadius * 1.8;
+                    const legLength = 50; // Very long legs
+                    const legWidth = 3; // Very thin
+                    
+                    // Left leg
+                    ctx.fillStyle = darkBlue;
+                    ctx.fillRect(centerX - 6, legStartY, legWidth, legLength);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(centerX - 6, legStartY, legWidth, legLength);
+                    
+                    // Right leg
+                    ctx.fillRect(centerX + 3, legStartY, legWidth, legLength);
+                    ctx.strokeRect(centerX + 3, legStartY, legWidth, legLength);
+                    
+                    // Small triangular/paddle-shaped dark blue feet
+                    const footY = legStartY + legLength;
+                    // Left foot
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 6, footY);
+                    ctx.lineTo(centerX - 10, footY + 4);
+                    ctx.lineTo(centerX - 2, footY + 4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Right foot
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 6, footY);
+                    ctx.lineTo(centerX + 2, footY + 4);
+                    ctx.lineTo(centerX + 10, footY + 4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // Boss name
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(boss.name, centerX, canvas.height - 5);
             },
             
             darkenColor(color) {
@@ -1191,6 +1952,38 @@
                 
                 const hit = this.attackHits[this.currentHitIndex];
                 
+                // Check for dodge ability (like Sans)
+                if (this.selectedNpc.hasDodge && this.selectedNpc.dodgeChance) {
+                    const dodgeRoll = Math.random();
+                    if (dodgeRoll < this.selectedNpc.dodgeChance) {
+                        // Boss dodged!
+                        this.battleMessage = "";
+                        this.battleMessageTimer = Date.now();
+                        this.currentHitIndex++;
+                        if (this.currentHitIndex < this.attackHits.length) {
+                            setTimeout(() => this.processNextHit(), 500);
+                        } else {
+                            this.showMoveSelection = false;
+                            if (!this.teacherMode) {
+                                this.playerTurn = false;
+                                this.npcLastActionTime = Date.now();
+                                this.npcNextReactionTime = 0;
+                            }
+                            this.attackHits = [];
+                            this.currentHitIndex = 0;
+                            if (this.npcHealth <= 0) {
+                                this.battleOver = true;
+                                this.battleResult = 'win';
+                                this.battleMessage = "You Win!";
+                                this.checkWinAchievements();
+                            }
+                        }
+                        this.updateBattleDisplay();
+                        return;
+                    }
+                    // 1% chance hit - continue with damage
+                }
+                
                 if (this.npcBlocking) {
                     const damage = Math.max(1, Math.floor(hit.damage * 0.3));
                     this.battleMessage = "";
@@ -1236,6 +2029,27 @@
                 const correctAnswer = this.currentQuestion.answer.toUpperCase();
                 
                 if (userAnswer === correctAnswer) {
+                    // Check for dodge ability (like Sans)
+                    if (this.selectedNpc.hasDodge && this.selectedNpc.dodgeChance) {
+                        const dodgeRoll = Math.random();
+                        if (dodgeRoll < this.selectedNpc.dodgeChance) {
+                            // Boss dodged the super move!
+                            this.battleMessage = "";
+                            this.showQuestion = false;
+                            this.currentQuestion = null;
+                            this.questionAnswer = '';
+                            this.battleMessageTimer = Date.now();
+                            if (!this.teacherMode) {
+                                this.playerTurn = false;
+                                this.npcLastActionTime = Date.now();
+                                this.npcNextReactionTime = 0;
+                            }
+                            this.updateBattleDisplay();
+                            return;
+                        }
+                        // 1% chance hit - continue with damage
+                    }
+                    
                     const baseDamage = this.selectedCharacter.base_damage;
                     const damage = Math.floor(baseDamage * this.moves[2].damage_multiplier);
                     this.npcHealth = Math.max(0, this.npcHealth - damage);
@@ -1664,8 +2478,23 @@
                         this.achievements.bird_plane.unlocked = true;
                     }
                 }
+
+                // Achievement: A Good Show - win against the same instrument on Expert
+                if (!this.achievements.good_show.unlocked) {
+                    const isExpert = this.selectedDifficultyIndex === 3; // Expert difficulty
+                    const sameInstrument = this.selectedCharacter && this.selectedNpc &&
+                        this.selectedCharacter.name === this.selectedNpc.name;
+                    if (isExpert && sameInstrument) {
+                        this.achievements.good_show.unlocked = true;
+                        // Unlock Artful character
+                        const artful = this.characters.find(c => c.name === 'Artful');
+                        if (artful) artful.unlocked = true;
+                    }
+                }
                 
                 this.renderAchievements();
+                // Auto-save when achievements are unlocked (silent)
+                this.saveGame(false);
             },
             
             checkLoseAchievements() {
@@ -1673,10 +2502,50 @@
                     this.achievements.pay_taxes.unlocked = true;
                 }
                 this.renderAchievements();
+                // Auto-save when achievements are unlocked (silent)
+                this.saveGame(false);
             },
             
             handleBattleEnd() {
-                if (this.teacherMode) {
+                // Stop boss music
+                const bossMusic = document.getElementById('bossMusic');
+                if (bossMusic) {
+                    bossMusic.pause();
+                    bossMusic.src = '';
+                }
+                
+                if (this.bossRushMode) {
+                    if (this.battleResult === 'win') {
+                        // Move to next boss
+                        this.currentBossIndex++;
+                        if (this.currentBossIndex < this.totalBosses) {
+                            // Continue to next boss (player keeps current health)
+                            this.inBattle = false;
+                            this.battleOver = false;
+                            this.battleResult = null;
+                            this.showMoveSelection = false;
+                            this.showQuestion = false;
+                            this.playerBlocking = false;
+                            this.npcBlocking = false;
+                            this.npcMoveSelection = null;
+                            this.npcLastActionTime = Date.now();
+                            this.npcNextReactionTime = 0;
+                            // Start next boss battle
+                            this.startBattle();
+                            return;
+                        } else {
+                            // All bosses defeated!
+                            alert('Congratulations! You completed Boss Rush!');
+                            // Return to character select
+                            this.currentBossIndex = 0;
+                            this.bossRushMode = false;
+                        }
+                    } else {
+                        // Lost - reset boss rush
+                        this.currentBossIndex = 0;
+                        this.bossRushMode = false;
+                    }
+                } else if (this.teacherMode) {
                     this.teacherBattleCount++;
                     if (this.currentBattleMoves.length > 0) {
                         this.learnedPlayerPatterns.move_sequences.push([...this.currentBattleMoves]);
@@ -1698,6 +2567,8 @@
                 this.selectedDifficulty = null;
                 this.teacherMode = false;
                 this.teacherBattleCount = 0;
+                this.bossRushMode = false;
+                this.currentBossIndex = 0;
                 this.showMoveSelection = false;
                 this.showQuestion = false;
                 this.playerBlocking = false;
